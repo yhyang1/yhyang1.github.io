@@ -30,6 +30,7 @@ github_username:  yhyang1
 
 # Build settings
 theme: jekyll-theme-modernist
+theme: null
 plugins:
   - jekyll-feed
 
