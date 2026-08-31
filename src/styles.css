@@ -32,26 +32,15 @@ footer {
   min-height: 5rem;
   display: flex;
   align-items: center;
-  justify-content: space-between;
   border-bottom: 1px solid var(--line);
 }
 
-.brand,
-.github-link {
+.brand {
   color: inherit;
   font-size: 0.78rem;
   font-weight: 800;
   letter-spacing: 0.14em;
   text-decoration: none;
-}
-
-.github-link {
-  letter-spacing: 0;
-}
-
-.github-link:hover,
-.github-link:focus-visible {
-  color: var(--accent);
 }
 
 main {
@@ -114,4 +103,3 @@ footer {
     gap: 0.25rem;
   }
 }
-
