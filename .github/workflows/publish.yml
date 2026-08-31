@@ -1,0 +1,82 @@
+name: Validate and publish static site
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+concurrency:
+  group: pages-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    name: Validate source
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v4
+
+      - name: Check required files
+        run: |
+          test -f src/index.html
+          test -f src/styles.css
+          test -f CNAME
+          test "$(tr -d '\r\n' < CNAME)" = "spacesky.org"
+
+      - name: Parse HTML
+        run: |
+          python3 - <<'PY'
+          from html.parser import HTMLParser
+          from pathlib import Path
+
+          class StrictEnoughParser(HTMLParser):
+              pass
+
+          source = Path("src/index.html").read_text(encoding="utf-8")
+          parser = StrictEnoughParser(convert_charrefs=True)
+          parser.feed(source)
+          parser.close()
+
+          required = ('<html lang="zh-CN">', '<meta name="viewport"', '<main id="top">')
+          missing = [item for item in required if item not in source]
+          if missing:
+              raise SystemExit(f"missing required HTML markers: {missing}")
+          print("HTML parse and required markers: OK")
+          PY
+
+  deploy:
+    name: Publish gh-pages
+    if: github.event_name == 'push' || github.event_name == 'workflow_dispatch'
+    needs: validate
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v4
+
+      - name: Prepare publish tree
+        run: |
+          mkdir -p "$RUNNER_TEMP/publish"
+          cp -R src/. "$RUNNER_TEMP/publish/"
+          cp CNAME "$RUNNER_TEMP/publish/CNAME"
+          touch "$RUNNER_TEMP/publish/.nojekyll"
+
+      - name: Publish with Git
+        env:
+          PUBLISH_DIR: ${{ runner.temp }}/publish
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git checkout --orphan gh-pages
+          git rm -rf .
+          cp -R "$PUBLISH_DIR/." .
+          git add -A
+          git commit -m "Deploy ${GITHUB_SHA}"
+          git push --force origin gh-pages
